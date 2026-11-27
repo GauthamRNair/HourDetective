@@ -23,7 +23,7 @@ X['removed_lines_per_day'] = X['lines_deleted_total'] / X['active_commit_days'].
 X['changed_lines_per_day'] = X['total_changed'] / X['active_commit_days'].replace(0, np.nan)
 
 # Text columns -> category columns
-for col in X.select_dtypes(include=["object", "str"]).columns:
+for col in cat_cols:
     X[col] = X[col].astype("category")
 
 # X and y are done, next bit is the actual model
@@ -36,16 +36,14 @@ project_model = HistGradientBoostingRegressor(
 
 project_model.fit(X, y)
 
-scores = cross_val_score(project_model, X, y, cv=5,
-                        scoring="neg_root_mean_squared_error")
-print(-scores.mean(), scores.std())
+# scores = cross_val_score(project_model, X, y, cv=5,
+#                         scoring="neg_root_mean_squared_error")
+# print(-scores.mean(), scores.std())
 
 test = pd.read_csv("test.csv")
 
-testX = test.drop(columns=drop)
+testX = test.drop(columns=drop, errors="ignore")
 
-cat_cols = testX.select_dtypes(include=["str", "object"]).columns
-testX[cat_cols] = testX[cat_cols].astype("category")
 
 testX['commits_per_day'] = testX['num_commits'] / testX['active_commit_days'].replace(0, np.nan)
 testX['total_changed'] = testX['lines_added_total'] + testX['lines_deleted_total']
@@ -54,7 +52,7 @@ testX['added_lines_per_day'] = testX['lines_added_total'] / testX['active_commit
 testX['removed_lines_per_day'] = testX['lines_deleted_total'] / testX['active_commit_days'].replace(0, np.nan)
 testX['changed_lines_per_day'] = testX['total_changed'] / testX['active_commit_days'].replace(0, np.nan)
 
-for col in testX.select_dtypes(include=["object", "str"]).columns:
+for col in X.select_dtypes(include="category").columns:
     testX[col] = pd.Categorical(testX[col], categories=X[col].cat.categories)
 
 predictions = np.expm1(project_model.predict(testX)) # exponent cus the hours are predicted in their log form
